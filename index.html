@@ -11,16 +11,16 @@
       color: #333;
       max-width: 600px;
       margin: auto;
-      padding: 1em;
+      padding: 0.5em; /* 余白少し縮小 */
       position: relative;
     }
     h1 {
       text-align: center;
       font-size: 1.5em;
-      margin-bottom: 1em;
+      margin: 0.5em 0;
     }
     .panel {
-      margin-bottom: 1.5em;
+      margin-bottom: 1.2em; /* 少し間隔狭め */
     }
     label {
       display: block;
@@ -36,13 +36,15 @@
     }
     #flagContainer {
       width: 300px;
-      height: 300px;
-      margin: 0 auto 1em;
+      height: 240px; /* 高さを少し縮小 */
+      margin: 0.2em auto; /* 上下の余白を小さく */
+      padding: 0;
     }
     #flagImage {
       width: 100%;
       height: 100%;
       object-fit: contain;
+      display: block;
     }
     #history {
       list-style: none;
@@ -118,7 +120,7 @@
       <input type="number" id="lengthPerQuestion" value="1" min="1" max="10" />
       <label for="intervalSec">問題間隔（秒）</label>
       <input type="number" id="intervalSec" value="5" min="1" />
-      <label for="signalSpeedSec">手旗信号スピード</label>
+      <label for="signalSpeedSec">手旗信号スピード（大きいほど速い）</label>
       <input type="number" id="signalSpeedSec" value="1" min="0.1" step="0.1" />
       <label for="charTypeSelect">出題文字種別</label>
       <select id="charTypeSelect">
