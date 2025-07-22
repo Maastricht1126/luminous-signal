@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>手旗信号練習アプリ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f9f9f9;
+      color: #333;
+      max-width: 600px;
+      margin: auto;
+      padding: 1em;
+      position: relative;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.5em;
+      margin-bottom: 1em;
+    }
+    .panel {
+      margin-bottom: 1.5em;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 0.5em;
+    }
+    input, select, button {
+      width: 100%;
+      font-size: 1em;
+      padding: 0.5em;
+      margin-bottom: 0.5em;
+      box-sizing: border-box;
+    }
+    #flagContainer {
+      width: 300px;
+      height: 300px;
+      margin: 0 auto 1em;
+    }
+    #flagImage {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    #history {
+      list-style: none;
+      padding-left: 0;
+    }
+    button {
+      background-color: #444;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #openSettingsBtn {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      width: 90px;
+      z-index: 1001;
+    }
+    #settingsModal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      overflow: auto;
+    }
+    #settingsContent {
+      background-color: #fff;
+      margin: 5% auto;
+      padding: 1em 2em 2em 2em;
+      border-radius: 8px;
+      max-width: 320px;
+      box-shadow: 0 0 10px #0003;
+    }
+    #closeSettingsBtn {
+      background-color: #777;
+      margin-top: 1em;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <h1>手旗信号練習アプリ</h1>
+
+  <button id="openSettingsBtn">設定</button>
+
+  <div id="flagContainer">
+    <img id="flagImage" src="poses/20.png" alt="手旗信号" />
+  </div>
+
+  <div class="panel">
+    <label>文字列（ひらがな・数字）</label>
+    <input type="text" id="inputText" value="あ1" />
+    <button onclick="playSignal()">再生</button>
+    <button onclick="generateRandom()">ランダム出題</button>
+    <button onclick="showAnswer()">解答表示</button>
+  </div>
+
+  <div class="panel">
+    <label>複数問題の解答欄</label>
+    <div id="multiAnswerPanel"></div>
+    <button onclick="checkMultiAnswers()">まとめて採点</button>
+  </div>
+
+  <div id="settingsModal">
+    <div id="settingsContent">
+      <h2>設定</h2>
+      <label for="questionCount">出題数</label>
+      <input type="number" id="questionCount" value="1" min="1" max="20" />
+      <label for="lengthPerQuestion">1問あたりの文字数</label>
+      <input type="number" id="lengthPerQuestion" value="1" min="1" max="10" />
+      <label for="intervalSec">問題間隔（秒）</label>
+      <input type="number" id="intervalSec" value="5" min="1" />
+      <label for="signalSpeedSec">手旗信号スピード</label>
+      <input type="number" id="signalSpeedSec" value="1" min="0.1" step="0.1" />
+      <label for="charTypeSelect">出題文字種別</label>
+      <select id="charTypeSelect">
+        <option value="all">すべて（数字＋ひらがな）</option>
+        <option value="numbers">数字のみ</option>
+        <option value="hiragana">ひらがなのみ</option>
+      </select>
+      <button id="closeSettingsBtn">閉じる</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <strong>正解：</strong><span id="answer"></span>
+  </div>
+
+  <div class="panel">
+    <strong>出題履歴：</strong>
+    <ul id="history"></ul>
+    <strong>正解数：</strong><span id="correctCount">0</span> / <span id="totalCount">0</span>
+    (<span id="accuracy">0</span>%)
+  </div>
+
+  <script>
+    const flagPoses = {
+      "あ": [9, 3], "い": [3, 2], "う": [6, 9], "え": [1, 19, 1], "お": [1, 2, 3],
+      "か": [8, 3], "き": [6, 2], "く": [110, 111], "け": [7, 3], "こ": [8, 1],
+      "さ": [1, 12], "し": [5, 7], "す": [1, 2, 5], "せ": [9, 7], "そ": [5, 3],
+      "た": [110, 111, 5], "ち": [7, 19], "つ": [12, 3], "て": [6, 3], "と": [2, 5],
+      "な": [1, 3], "に": [6], "ぬ": [9, 4], "ね": [9, 2, 1], "の": [3],
+      "は": [10], "ひ": [1, 7], "ふ": [9], "へ": [4], "ほ": [1, 2, 10],
+      "ま": [9, 5], "み": [6, 1], "む": [7, 5], "め": [3, 5], "も": [6, 7],
+      "や": [8, 4], "ゆ": [9, 1], "よ": [8, 6],
+      "ら": [5, 9], "り": [12], "る": [3, 7], "れ": [7], "ろ": [7, 8],
+      "わ": [2, 9], "を": [1, 9], "ん": [5, 1],
+      "0": [], "1": [1], "2": [2], "3": [3], "4": [4],
+      "5": [5], "6": [6], "7": [7], "8": [8], "9": [9]
+    };
+
+    let currentAnswer = '';
+    let currentQuestions = [];
+    let correct = 0;
+    let total = 0;
+
+    function playSignal(text = null) {
+      if (text === null) text = document.getElementById('inputText').value;
+      currentAnswer = text;
+      const img = document.getElementById('flagImage');
+      let frames = [];
+
+      for (let ch of text) {
+        if (flagPoses[ch]) {
+          for (let pose of flagPoses[ch]) {
+            frames.push(`poses/${pose}.png`);
+          }
+          frames.push("poses/20.png");
+        }
+      }
+
+      let i = 0;
+      const speedValue = parseFloat(document.getElementById('signalSpeedSec').value);
+      const baseSpeed = 800;
+      const speed = baseSpeed / speedValue;
+
+      function showNext() {
+        if (i >= frames.length) {
+          img.src = "poses/20.png";
+          return;
+        }
+        img.src = frames[i];
+        i++;
+        setTimeout(showNext, speed);
+      }
+
+      showNext();
+    }
+
+    function generateRandom() {
+      const charType = document.getElementById('charTypeSelect').value;
+      let chars = Object.keys(flagPoses).filter(k => flagPoses[k].length > 0);
+      if (charType === 'numbers') {
+        chars = chars.filter(c => c >= '0' && c <= '9');
+      } else if (charType === 'hiragana') {
+        chars = chars.filter(c => c.match(/^[ぁ-ん]$/));
+      }
+
+      const count = parseInt(document.getElementById('questionCount').value);
+      const length = parseInt(document.getElementById('lengthPerQuestion').value);
+      const interval = parseInt(document.getElementById('intervalSec').value) * 1000;
+
+      const panel = document.getElementById('multiAnswerPanel');
+      panel.innerHTML = '';
+      currentQuestions = [];
+
+      let i = 0;
+      const img = document.getElementById('flagImage');
+
+      function next() {
+        if (i >= count) {
+          img.src = "poses/20.png";
+          return;
+        }
+
+        img.src = "poses/20.png";
+
+        setTimeout(() => {
+          let q = '';
+          for (let j = 0; j < length; j++) {
+            q += chars[Math.floor(Math.random() * chars.length)];
+          }
+          currentQuestions.push(q);
+          const inputId = `answerInput${i}`;
+          panel.innerHTML += `<div><strong>Q${i + 1}:</strong><br><input type="text" id="${inputId}" placeholder="ここに解答"></div>`;
+
+          currentAnswer = q;
+          playSignal(q);
+
+          total++;
+          document.getElementById('totalCount').textContent = total;
+
+          i++;
+          setTimeout(next, interval);
+        }, 1000);
+      }
+
+      next();
+    }
+
+    function showAnswer() {
+      document.getElementById('answer').textContent = currentAnswer;
+    }
+
+    function checkMultiAnswers() {
+      const history = document.getElementById('history');
+      let newEntries = [];
+      for (let i = 0; i < currentQuestions.length; i++) {
+        const expected = currentQuestions[i];
+        const userInput = document.getElementById(`answerInput${i}`).value.trim();
+        const correctMark = userInput === expected ? '⭕' : '❌';
+        const entry = document.createElement('li');
+        entry.textContent = `Q${i + 1}: ${expected} | A: ${userInput} | ${correctMark}`;
+        newEntries.push(entry);
+        if (userInput === expected) correct++;
+      }
+
+      newEntries.reverse().forEach(e => history.insertBefore(e, history.firstChild));
+      while (history.children.length > 20) history.removeChild(history.lastChild);
+
+      document.getElementById('correctCount').textContent = correct;
+      document.getElementById('accuracy').textContent = ((correct / total) * 100).toFixed(1);
+    }
+
+    document.getElementById('openSettingsBtn').addEventListener('click', () => {
+      document.getElementById('settingsModal').style.display = 'block';
+    });
+
+    document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+      document.getElementById('settingsModal').style.display = 'none';
+    });
+
+    document.getElementById('settingsModal').addEventListener('click', (e) => {
+      if (e.target === document.getElementById('settingsModal')) {
+        document.getElementById('settingsModal').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
